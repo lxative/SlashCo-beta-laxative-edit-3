@@ -231,7 +231,7 @@ function SlashCo.SpawnGasCans()
 	local offeringMod = SlashCo.CurRound.OfferingData.GasCanMod
 	local headStartMod = -(SlashCo.HeadStartCans or 0)
 	local survivorMod = -SlashCo.CurRound.SurvivorData.GasCanMod
-	gasCanCount = math.max(gasCanCount + offeringMod + headStartMod + survivorMod + diffMod, SlashCo.MapSize)
+	gasCanCount = math.min(gasCanCount + offeringMod + headStartMod + survivorMod + diffMod + 4, (cansPerGen * gens))-- laxative was here
 
 	if forceGasCanCount >= 0 then
 		gasCanCount = forceGasCanCount
@@ -249,7 +249,7 @@ function SlashCo.SpawnGasCans()
 			end
 		end
 	end
-
+	--print(gasCanCount .." gas cans spawned")
 	local gasCansToSpawn = SlashCo.SelectSpawns(gasCanSpawns, gasCanCount, nil, nil, true)
 
 	if table.IsEmpty(gasCansToSpawn) then

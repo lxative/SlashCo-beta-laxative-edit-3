@@ -121,7 +121,14 @@ hook.Add("PlayerCanHearPlayersVoice", "SlashCo:VoiceChat", function(listener, ta
 	return CanPlayersHearEachOther(listener, talker, true)
 end)
 
-hook.Add("GetFallDamage", "RealisticDamage", function(_, speed)
+hook.Add("GetFallDamage", "RealisticDamage", function(ply, speed) -- laxative was here, added sounds... why were the normal gmod fall sounds not working???
+	if ply:Team() == TEAM_SURVIVOR then
+		if speed / 24 <= 25 then
+			EmitSound( "physics/body/body_medium_impact_hard1.wav", ply:GetPos(), 0, CHAN_AUTO, math.Rand( 0.6, 0.8 ), 75, 0, math.Rand( 70, 110 ) )
+		else
+			EmitSound( "physics/body/body_medium_break2.wav", ply:GetPos(), 0, CHAN_AUTO, math.Rand( 0.6, 0.8 ), 75, 0, math.Rand( 70, 110 ) )
+		end
+	end
 	return speed / 24
 end)
 

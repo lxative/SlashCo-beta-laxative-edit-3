@@ -19,7 +19,7 @@ SlashCo.Generators = 3 --Default number of generators
 SlashCo.GensNeeded = 2 --Default number of generators needed
 SlashCo.GeneratorModel = "models/slashco/other/generator/generator.mdl" --Model path for the generators
 SlashCo.HelicopterModel = "models/slashco/other/helicopter/helicopter.mdl" --Model path for the helicopter
-SlashCo.GhostPingDelay = 480
+SlashCo.GhostPingDelay = 30
 SlashCo.QuickEscapeTime = 600 -- Time in seconds to count as a quick escape
 SlashCo.SlowEscapeTime = 1200 -- Time in seconds to count as a slow escape
 SlashCo.OverTime = SlashCo.SlowEscapeTime - 300 -- Time in seconds when the survivors should be warned that they got only 5 minutes left before its a slow run. NOTE: At this point, some hints will be given to survivors like fuel cans will make sounds
@@ -233,6 +233,39 @@ function SlashCo.ReadOptional(readFunc, ...)
 
 	return nil
 end
+
+local ambientSounds = {}
+for k=1, 3 do
+	table.insert(ambientSounds, "wind_hit" .. k .. ".wav")
+end
+
+for k=1, 2 do
+	table.insert(ambientSounds, "wind_moan" .. k .. ".wav")
+end
+table.insert(ambientSounds, "wind_moan4.wav")
+
+for k=1, 5 do
+	table.insert(ambientSounds, "wind_snippet" .. k .. ".wav")
+end
+
+
+function GhostAmbientSound(pos)-- laxative was here
+		--print("yep we are doing that")
+		local soundName = ambientSounds[math.random(1, #ambientSounds)]
+		--print(soundName)
+		SlashCo.AudioSystem.PlaySound({
+			soundPath = "ambient/wind/" .. soundName,
+			identifier = "GhostSound-" .. soundName .. math.Rand(1,1000),
+			volume = 0.75,
+			entity = game.GetWorld(),
+			fadeIn = 1,
+			position = pos,
+			minDistance = 250,
+			maxDistance = 500,
+			disableUniqueToEntity = true,
+			deleteWhenDone = true, -- Else we'll have easily 100+ dead channels
+		})
+	end
 
 --[[
 	DangerLevel's
