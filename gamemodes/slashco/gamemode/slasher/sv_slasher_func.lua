@@ -554,3 +554,31 @@ hook.Add("SlashCo:PlayerDeath", "SlashCo:RunSlasherPlayerDeath", function(victim
 		slasher:SlasherFunction("OnPlayerDeath", victim)
 	end
 end)
+
+hook.Add("KeyPress", "SlashCo:SlasherFunctions", function(ply, button) -- laxative was here
+	local team = ply:Team()
+	if team ~= TEAM_SLASHER then
+		return
+	end
+
+	local lookent = ply:GetEyeTrace().Entity
+
+	if button ~= IN_USE or ply:IsSprinting() == false then
+		return
+	end
+
+	if lookent:GetPos():Distance(ply:GetPos()) > 120 then
+		return
+	end
+
+	if ply:SlamDoor(lookent) then
+		ply:ViewPunch(Angle(7, 0, 0))
+		timer.Simple(0.2, function()
+			if not IsValid(ply) then
+				return
+			end
+
+			ply:ViewPunch(Angle(-15, 0, 0))
+		end)
+	end
+end)
