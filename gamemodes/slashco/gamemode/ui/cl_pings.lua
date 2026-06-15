@@ -10,13 +10,13 @@ local pingType = {
 		return pingInfo.Name, blue
 	end,
 	SLASHER = function()
-		return nil, red
+		return "?", transp
 	end,
 	GENERATOR = function()
 		return nil, green
 	end,
 	GHOST = function()
-		return "?????", transp
+		return "?", transp
 	end
 }
 
@@ -45,11 +45,11 @@ end
 
 local function shouldRemovePing(idx, pingInfo, newPing)
 	if not pingInfo.Permanent and pingInfo.Player == newPing.Player then
-		return true
+		return false
 	end
 
 	if pingInfo.Entity and pingInfo.Entity == newPing.Entity and pingInfo.Team == newPing.Team then
-		return true
+		return false
 	end
 
 	return false
@@ -92,19 +92,24 @@ net.Receive("SlashCo:SurvivorPings", function()
 			Position = SlashCo.ReadOptional(net.ReadVector),
 		}
 
-		if not pingInfo.ExpiryTime then
-			pingInfo.Permanent = true
-		end
+		--if not pingInfo.ExpiryTime then
+		--	pingInfo.Permanent = true
+		--end
 
 		antiDupePings(pingInfo)
 		if not fullUpdate and pingInfo.Team ~= TEAM_SLASHER then
 			if pingInfo.Type == "GENERATOR" then
-				GameData.LocalPlayer:EmitSound("slashco/ping_generator.mp3")
+				--GameData.LocalPlayer:EmitSound("slashco/ping_generator.mp3")
 			elseif pingInfo.Type ~= "LOOK HERE" and pingInfo.Type ~= "LOOK AT THIS" and pingInfo.Type ~= "GHOST" then
-				GameData.LocalPlayer:EmitSound("slashco/ping_item.mp3")
+				--GameData.LocalPlayer:EmitSound("slashco/ping_item.mp3")
 			end
 		end
-
+		if pingInfo.Type != "GHOST" then -- laxative was here
+			pingInfo.ExpiryTime = 0
+		else
+			GhostAmbientSound(pingInfo.Position)
+		end
+		
 		table.insert(GameData.ActivePings, pingInfo)
 	end
 end)
@@ -154,7 +159,7 @@ hook.Add("SlashCo:DrawHUD", "SlashCo:PingDisplay", function()
 
 			renderedEntities[pingInfo.Entity] = true
 		end
-
+		--local plyr = LocalPlayer() --laxative was here
 		local ply = pingInfo.Player and Entity(pingInfo.Player) or NULL
 		if pingInfo.Type ~= "GHOST" and not IsValid(ply) then
 			continue
@@ -167,36 +172,55 @@ hook.Add("SlashCo:DrawHUD", "SlashCo:PingDisplay", function()
 		showText = showText or pingInfo.Type or "INVALID"
 		local nameColor = transp
 		if pingInfo.Team == TEAM_SLASHER then
-			textColor = red
-			nameColor = red
+			textColor = transp
+			nameColor = transp
 		else
 			textColor = textColor or color_white
 		end
+		
 		pos = pos or findPos(pingInfo):ToScreen()
-
+		--pingdist = findPos(pingInfo):Distance(plyr:GetPos()) --laxative was here
+		--print(pingdist)
+		
+		--if pingdist <= 992 or pingInfo.Type == "GHOST" then --laxative was here, this makes all pings only visisble within 25m
+		
+		
 		if IsValid(ply) then
 			draw.SimpleText(ply:GetName(), "TVCD_small", pos.x, pos.y - 25, nameColor,
 					TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 		end
-
-		draw.SimpleText("[" .. string.upper(SlashCo.Language(showText)) .. "]", "TVCD", pos.x, pos.y, textColor, TEXT_ALIGN_CENTER,
+		
+		draw.SimpleText("[" .. string.upper(SlashCo.Language(showText)) .. "]", "TVCD_small", pos.x, pos.y, textColor, TEXT_ALIGN_CENTER,
 				TEXT_ALIGN_CENTER)
 	end
-
+	--end
+	local plyr = LocalPlayer() --laxative was here
 	for _, v in ipairs(ents.FindByClass("sc_flare")) do
-		if not v:GetNWBool("FlareActive") then
+		if not v:GetNWBool("FlareActive") or plyr:GetPos():Distance(v:GetPos()) >= 1984 or plyr:Team() == TEAM_SLASHER then -- 50m roughly laxative
 			continue
 		end
 
 		local fl_pos = v:WorldSpaceCenter():ToScreen()
 
-		draw.SimpleText(v:GetNWString("FlareDropperName"), "TVCD_small", fl_pos.x, fl_pos.y - 25,
-				transp,
-				TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
-		draw.SimpleText("[ ☆ ]", "TVCD", fl_pos.x, fl_pos.y, textColor, TEXT_ALIGN_CENTER,
+		
+		draw.SimpleText("[☆]", "TVCD", fl_pos.x, fl_pos.y, textColor, TEXT_ALIGN_CENTER,
 				TEXT_ALIGN_CENTER)
 		draw.SimpleText(tostring(math.floor(GameData.LocalPlayer:GetPos():Distance(v:GetPos()) * 0.0254)) .. " m",
 				"TVCD_small", fl_pos.x, fl_pos.y + 25, transp,
+				TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+	end
+		for _, v in ipairs(ents.FindByClass("sc_helicopter")) do
+		if plyr:Team() == TEAM_SLASHER then -- 50m roughly laxative
+			continue
+		end
+
+		local heli_pos = v:WorldSpaceCenter():ToScreen()
+
+		
+		draw.SimpleText("[HELI]", "TVCD_small", heli_pos.x, heli_pos.y, textColor, TEXT_ALIGN_CENTER,--laxative was here
+				TEXT_ALIGN_CENTER)
+		draw.SimpleText(tostring(math.floor(GameData.LocalPlayer:GetPos():Distance(v:GetPos()) * 0.0254)) .. " m",
+				"TVCD_small", heli_pos.x, heli_pos.y + 25, transp,
 				TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 	end
 end)

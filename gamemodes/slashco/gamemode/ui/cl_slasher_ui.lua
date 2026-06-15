@@ -11,6 +11,23 @@
 --local ChaseDisabledIcon = Material("slashco/ui/icons/slasher/chase_disabled")
 --local SlashID = 0
 
+local function slamIndicator() -- laxative was here
+	if GameData.LocalPlayer:IsSprinting() == false then
+		return
+	end
+
+	local lookent = GameData.LocalPlayer:GetEyeTrace().Entity
+	if not IsValid(lookent) or lookent:GetClass() ~= "prop_door_rotating" or not SlashCo.CheckDoorWL(lookent) then
+		return
+	end
+
+	if lookent:GetPos():Distance(GameData.LocalPlayer:GetPos()) >= 150 or lookent.IsOpen then
+		return
+	end
+
+	draw.SimpleText(SlashCo.Language("door_slam", "USE"), "TVCD", ScrW() / 2, ScrH() / 2, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+end
+
 local BeaconIcon = Material("slashco/ui/slasher_beacon")
 hook.Add("SlashCo:DrawHUD", "BaseSlasherHUD", function()
 	local ply = GameData.LocalPlayer
@@ -18,7 +35,7 @@ hook.Add("SlashCo:DrawHUD", "BaseSlasherHUD", function()
 	if ply:Team() ~= TEAM_SLASHER then
 		return
 	end
-
+	slamIndicator() -- actually fucking add the function to the hook because ijm so fuvcking smart.................. laxative
 	local pacified = GameData.LocalPlayer:GetNWBool("DemonPacified")
 	local blinded = GameData.LocalPlayer:GetNWBool("SlasherBlinded")
 
