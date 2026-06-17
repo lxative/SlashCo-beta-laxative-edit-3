@@ -253,8 +253,10 @@ if CLIENT then
 			local pos = survivor:GetPos()
 			emitter:SetPos(pos)
 			local part = emitter:Add(StepNotice, pos)
-
-			if part and timeSinceLast == 0 and (slasherpos):Distance(pos) < range and survivor:IsOnGround() then
+			
+			
+			
+			if part and timeSinceLast == 0 and (slasherpos):Distance(pos) < range and survivor:IsOnGround() and survivor:GetVelocity():LengthSqr() >= 22500 then --laxative was here
 				part:SetColor(255, 255, 255, math.random(255))
 				part:SetVelocity(Vector(math.random(-1, 1), math.random(-1, 1), math.random(-1, 1)):GetNormal() * 20)
 				part:SetDieTime(1)

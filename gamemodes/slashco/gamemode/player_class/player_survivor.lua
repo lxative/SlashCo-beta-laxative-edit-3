@@ -120,3 +120,110 @@ hook.Add("PlayerFootstep", "SurvivorFootstep", function(ply)
 		return true
 	end
 end)
+
+-- everything below this line is just a copy paste from prior version
+-- 2026-06-10
+
+local staminaDepletion = 0.008
+
+local plyMeta = FindMetaTable( "Player" )
+function plyMeta:GetStamina()
+    return self:GetNWFloat( "ST2Stamina", self:GetStaminaCap() )
+end
+
+function plyMeta:SetStamina( ST )
+    self:SetNWFloat( "ST2Stamina", ST )
+end
+
+function plyMeta:AddStamina( ST )
+    self:SetNWFloat( "ST2Stamina", math.Clamp( self:GetNWFloat( "ST2Stamina", self:GetStaminaCap() ) + ST, 0, self:GetStaminaCap() ) )
+end
+
+function plyMeta:CapStamina( cap )
+    self:SetNWFloat( "ST2MaxStam", cap )
+end
+
+function plyMeta:GetStaminaCap()
+    return self:GetNWFloat( "ST2MaxStam", 100 )
+end
+
+hook.Add( "PlayerSpawn", "SetupST2StaminaValues", function( ply )
+
+    ply:SetStamina( ply:GetStaminaCap() )
+
+end )
+
+local CMoveData = FindMetaTable( "CMoveData" )
+
+function CMoveData:RemoveKeys( keys )
+	local newbuttons = bit.band( self:GetButtons(), bit.bnot( keys ) )
+	self:SetButtons( newbuttons )
+end
+
+hook.Add( "PlayerTick", "STStamina2ModifyStamina", function( ply, mv )
+
+	if IsFirstTimePredicted() then -- is this even a good idea? i am not very experienced with using prediction... i just wanted the stamina bar to look smoother on ping :( laxative
+	
+    -- refill stamina if noclipping
+    if ply:GetMoveType() == MOVETYPE_NOCLIP then
+        ply:SetStamina( ply:GetStaminaCap() )
+    end
+
+    -- disallow jumping when our stamina is too low
+    if ply:Team() == TEAM_SURVIVOR and ply:GetStamina() < 15 then
+        mv:RemoveKeys( IN_JUMP )
+    end
+
+
+    if ply:Alive() and CurTime() >= ply:GetNWFloat( "ZeroStam", 0 ) + 3 then
+    
+        ply:SetNWFloat( "ZeroStam", 0 )
+
+        -- stamina regen
+        if mv:GetVelocity():LengthSqr() <= ( ply:GetRunSpeed() * 1.2 * ply:GetRunSpeed() * 1.2 ) then
+            if ply:OnGround() then
+				if mv:GetVelocity():LengthSqr() == 0 then
+					ply:AddStamina( 0.004 )
+                elseif mv:GetVelocity():LengthSqr() <= 4900 then
+                    ply:AddStamina( 0.003 )
+                else
+                    ply:AddStamina( 0.001 )
+                end
+            else
+                ply:AddStamina( 0.0 )
+            end
+        end
+
+        -- handle stamina draining
+        if ply:IsSprinting() and mv:GetVelocity():LengthSqr() >= ply:GetWalkSpeed() * ply:GetWalkSpeed() * ( ply:GetStamina() <= 25 and 0.6 or 1 ) and ply:OnGround() then
+            ply:AddStamina( -1 * staminaDepletion )
+        elseif ply:WaterLevel() >= 2 then
+            if ply:IsSprinting() then
+                ply:AddStamina( -0.3 * staminaDepletion )
+            else
+                ply:AddStamina( -0.2 * staminaDepletion )
+            end
+        end
+
+        -- take a chunk of stamina when jumping
+        if ply:OnGround() and mv:KeyPressed( IN_JUMP ) and ply:GetStamina() > 15 and IsFirstTimePredicted() then
+            ply:AddStamina( -120 * staminaDepletion )
+        end
+
+    end
+	end
+end )
+
+hook.Add( "SetupMove", "ApplyStaminaModifications", function( ply, mv, cmd )
+    if ply:Team() == TEAM_SURVIVOR and ply:Alive() and ply:GetStamina() < 15 then
+        mv:RemoveKeys( IN_JUMP )
+        mv:SetMaxClientSpeed( mv:GetMaxClientSpeed() * 0.625 )
+        mv:SetMaxSpeed( mv:GetMaxClientSpeed() * 0.625 )
+        cmd:SetForwardMove( cmd:GetForwardMove() * 0.625 )
+        cmd:SetSideMove( cmd:GetSideMove() * 0.625 )
+        if ply:GetStamina() == 0 and ply:GetNWFloat( "ZeroStam", 0 ) == 0 then
+            ply:SetNWFloat( "ZeroStam", CurTime() )
+        end
+    end
+end )
+

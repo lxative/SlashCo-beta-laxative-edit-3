@@ -456,36 +456,6 @@ hook.Add("PreRender", "SlashCo:DeathUI", function()
 	return true
 end)
 
-hook.Add("SlashCo:DrawHUD", "SurvivorHUD", function()
-	local ply = GameData.LocalPlayer
-	
-	local team = ply:Team()
-	if team == TEAM_LOBBY then
-		slamIndicator()
-		return
-	end
-
-	if team == TEAM_SPECTATOR then
-		drawObjectives()
-		return
-	end
-
-	if team ~= TEAM_SURVIVOR then
-		return
-	end
-
-	local moveUp = drawItemDisplay(ply:GetItem("item"), ply:GetItem("item2") ~= "none")
-	drawItemDisplay(ply:GetItem("item2"), nil, moveUp)
-
-	local hitPos = GameData.LocalPlayer:GetShootPos()
-	gasFuelMeter(hitPos)
-	selectCrosshair(hitPos)
-
-	hpMeter()
-	slamIndicator()
-	drawObjectives()
-	showScreenMessage()
-end)
 
 hook.Add("SlashCo:DrawHUD", "SurvivorStruggle", function()
 	local ply = GameData.LocalPlayer
@@ -698,4 +668,107 @@ net.Receive("SlashCo:Announcement", function()
 			end
 		cam.End2D()
 	end)
+end)
+
+-- my dark work begins
+	local stmclock = 0
+	local stmtrend, ShowStamloss, stmhold
+	
+local function stmMeter()
+
+	local ply = LocalPlayer()
+	local stm = ply:GetStamina()
+
+	local maxstam = 100
+	
+	
+	
+	if stm >= maxstam then
+		stmclock = CurTime()
+		stmhold = 100
+		stmtrend = 100
+		else
+		if stmclock < CurTime() then 
+		
+		if stm > stmtrend then
+			stmhold = stm
+		end
+		stmtrend = stm
+		stmclock = CurTime() + 3 
+		end
+	end
+
+	local prevStmBar = math.Round(math.Clamp(((math.Clamp(stmhold,15,100)) - stm) / maxstam, 0, 1) * 27)
+
+	local parsed
+	
+
+	if stm >= 15 or not GetConVar("slashco_cl_show_lowhealth"):GetBool() then
+
+		local stmAdjust = math.Clamp(stm, 0, maxstam)
+		local displayStmBar = math.Round(math.Clamp(stmAdjust / maxstam, 0, 1) * 27)
+
+		local displayprevStmBar = ((CurTime()-10) % 0.7 < 0.35) and prevStmBar or 0
+		parsed = markup.Parse(string.format("<font=TVCD>%s <colour=255,255,255,255>%s</colour><colour=255,0,0,255>%s</colour></font>",
+				SlashCo.Language("ST"),
+				string.rep("█", displayStmBar),
+				string.rep("█", displayprevStmBar)
+		))
+	else
+		local displayStmBar = (CurTime() % 0.7 > 0.35) and math.Round(math.Clamp(stm / maxstam, 0, 1) * 27) or 0
+		local displayprevStmBar1 = (CurTime() % 0.7 > 0.35) and prevStmBar or 0
+		parsed = markup.Parse(string.format("<font=TVCD>%s <colour=255,255,0,255>%s</colour><colour=255,0,0,255>%s</colour></font>",
+				SlashCo.Language("ST"),
+				string.rep("█", displayStmBar),
+				string.rep("█", displayprevStmBar1)
+		))
+	end
+
+	surface.SetDrawColor(0, 0, 128, 255)
+
+	local stmLength = markup.Parse("<font=TVCD>" .. SlashCo.Language("st") .. "</font>"):GetWidth()
+
+	if not GetConVar("slashco_cl_show_healthvalue"):GetBool() then
+		surface.DrawRect(ScrW() * 0.025, ScrH() * 0.95 - 48, 376 + stmLength, 27)
+	else
+		local displaystm = math.Truncate(stm, 0)
+		displaystm = displaystm
+		local parsedValue = markup.Parse("<font=TVCD>" .. displaystm .. "</font>")
+		surface.DrawRect(ScrW() * 0.025, ScrH() * 0.95 - 48, 386 + parsedValue:GetWidth() + stmLength, 27)
+		parsedValue:Draw(ScrW() * 0.025 + 384 + stmLength, ScrH() * 0.95 - 24, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM)
+	end
+
+	parsed:Draw(ScrW() * 0.025 + 4, ScrH() * 0.95 - 24, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM)
+end
+-- relocated hook here
+hook.Add("SlashCo:DrawHUD", "SurvivorHUD", function()
+	local ply = GameData.LocalPlayer
+	
+	local team = ply:Team()
+	if team == TEAM_LOBBY then
+		slamIndicator()
+		return
+	end
+
+	if team == TEAM_SPECTATOR then
+		drawObjectives()
+		return
+	end
+
+	if team ~= TEAM_SURVIVOR then
+		return
+	end
+
+	local moveUp = drawItemDisplay(ply:GetItem("item"), ply:GetItem("item2") ~= "none")
+	drawItemDisplay(ply:GetItem("item2"), nil, moveUp)
+
+	local hitPos = GameData.LocalPlayer:GetShootPos()
+	gasFuelMeter(hitPos)
+	selectCrosshair(hitPos)
+	
+	hpMeter()
+	slamIndicator()
+	drawObjectives()
+	showScreenMessage()
+	stmMeter()
 end)

@@ -235,7 +235,7 @@ function PLAYER:SurvivorPing()
 
 	pingInfo.Player = self
 
-	if pingInfo.Team == TEAM_SPECTATOR then
+	if pingInfo.Team == TEAM_SPECTATOR or pingInfo.Team == TEAM_SLASHER then
 		pingInfo.Type = "GHOST"
 		pingInfo.Position = trace.HitPos
 		pingInfo.ExpiryTime = 5
@@ -343,8 +343,9 @@ function PLAYER:SurvivorPing()
 		SlashCo.WriteOptional(pingInfo.Entity, net.WriteEntity)
 		SlashCo.WriteOptional(pingInfo.Position, net.WriteVector)
 
-		local players = team.GetPlayers(pingInfo.Team == TEAM_SPECTATOR and TEAM_SURVIVOR or pingInfo.Team)
+		local players = team.GetPlayers(TEAM_SPECTATOR and TEAM_SURVIVOR)
 		table.Add(players, team.GetPlayers(TEAM_SPECTATOR))
+		table.Add(players, team.GetPlayers(TEAM_SLASHER))
 	net.Send(players)
 end
 
