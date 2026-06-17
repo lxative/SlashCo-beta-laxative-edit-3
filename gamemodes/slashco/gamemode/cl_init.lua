@@ -7,7 +7,8 @@ include("sh_content.lua")
 
 SlashCo.LangTable = {}
 SlashCo.CurrentLang = SlashCo.CurrentLang or "en"
-local currentLang = string.lower(language.GetPhrase("slashco.language"))
+local gmod_language = GetConVar("gmod_language")
+local currentLang = string.lower(gmod_language:GetString())
 if currentLang ~= "en" then -- Let's save us 1 filesystem call
 	SlashCo.LoadGamemodeFile("slashco/lang/en.lua")
 	SlashCo.LangTableFallback = SlashCo.LangTable -- Works since SlashCo.LangTable is replaced in SlashCo.LoadLanguage()
@@ -15,25 +16,25 @@ end
 
 function SlashCo.LoadLanguage()
 	SlashCo.LangTable = {}
-	local lang_files, _ = file.Find("slashco/lang/*.lua", "LUA")
-	for _, v in ipairs(lang_files) do
-		local lang = string.lower(language.GetPhrase("slashco.language"))
-		if lang == string.lower(string.Replace(v, ".lua", "")) then
-			SlashCo.LoadGamemodeFile("slashco/lang/" .. v)
-			if lang == "en" and not SlashCo.LangTableFallback then
-				SlashCo.LangTableFallback = table.Copy(SlashCo.LangTable)
-			end
+	-- We DONT reuse the local outside since it may be outdated!
+	local currentLang = string.lower(gmod_language:GetString())
+	local luaLangFile = currentLang .. ".lua"
+	if not file.Exists("slashco/lang/" .. luaLangFile, "LUA") then
+		print("[SlashCo] Unknown language \"" .. currentLang .. "\"!")
+		return
+	end
 
-			-- Any SlashCo addon can have their own language file to add additional keys :)
-			SlashCo.LoadFileFromAddons("lua/slashco/lang/*/" .. v)
+	SlashCo.LoadGamemodeFile("slashco/lang/" .. luaLangFile)
+	if currentLang == "en" and not SlashCo.LangTableFallback then
+		SlashCo.LangTableFallback = table.Copy(SlashCo.LangTable)
+	end
 
-			if SlashCo.CurrentLang != lang then
-				SlashCo.CurrentLang = lang
-				hook.Run("SlashCo:LanguageChanged") -- In case any system needs a hook, why doesn't gmod have a hook already :(
-			end
+	-- Any SlashCo addon can have their own language file to add additional keys :)
+	SlashCo.LoadFileFromAddons("lua/slashco/lang/*/" .. luaLangFile)
 
-			break
-		end
+	if SlashCo.CurrentLang != currentLang then
+		SlashCo.CurrentLang = currentLang
+		hook.Run("SlashCo:LanguageChanged") -- In case any system needs a hook, why doesn't gmod have a hook already :(
 	end
 end
 SlashCo.LoadLanguage()
@@ -187,8 +188,8 @@ net.Receive("SlashCo:TestConfigHalos", function()
 	SlashCoTestConfig = true
 end)
 
-showHalos = true
-showGasCanHalos = false
+GameData.showHalos = GameData.showHalos or true
+GameData.showGasCanHalos = GameData.showGasCanHalos or false
 
 local colors = {
 	red = Color(255, 0, 0),
@@ -241,11 +242,11 @@ hook.Add("PreDrawHalos", "SlashCo:ClientPreDrawHalos", function()
 	end
 
 	if _team == TEAM_SPECTATOR then
-		if showHalos then
+		if GameData.showHalos then
 			SlashCo.DrawHalo(ents.FindByClass("sc_generator"), "yellow")
 			SlashCo.DrawHalo(team.GetPlayers(TEAM_SURVIVOR), "blue")
 			SlashCo.DrawHalo(team.GetPlayers(TEAM_SLASHER), "red")
-			if showGasCanHalos then
+			if GameData.showGasCanHalos then
 				SlashCo.DrawHalo(ents.FindByClass("sc_gascan"), "gray")
 				SlashCo.DrawHalo(ents.FindByClass("sc_battery"), "green")
 			end
@@ -707,7 +708,8 @@ end
 
 -- RaphaelIT7: We use PostDrawHUD instead of DrawOverlay to avoid rendering OVER the main menu.
 hook.Add("PostDrawHUD", "SlashCo:DrawHUD", function()
-	if not GameData.LocalPlayer then return end -- DrawHUD is only called when the localplayer is valid!
+	-- RaphaelIT7: iirc on 64x DrawHUD can be called BEFORE LocalPlayer is valid.
+	if not IsValid(GameData.LocalPlayer) then return end -- SlashCo:DrawHUD should only called when the LocalPlayer is valid!
 
 	cam.Start2D() -- Wiki says we need this :/
 		hook.Run("SlashCo:DrawHUD")

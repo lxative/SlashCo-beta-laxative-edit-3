@@ -360,25 +360,57 @@ local selection = {
 	end,
 }
 
+local function utf8_chars(str)
+	local chars = {}
+	for c in string.gmatch(str, "[%z\1-\127\194-\244][\128-\191]*") do
+		chars[#chars + 1] = c
+	end
+	return chars
+end
+
 local function SplitTextIntoRows(text, font, maxRowWidth)
 	surface.SetFont(font)
-	local splitDescription = string.Split(text, " ")
-	local descriptionRows = {}
-	local currentRow = ""
-	for _, word in ipairs(splitDescription) do
-		local prevText = currentRow
-		currentRow = currentRow .. " " .. word
 
-		local width, _ = surface.GetTextSize(currentRow)
-		if width > maxRowWidth then
-			table.insert(descriptionRows, prevText:Trim())
-			currentRow = word
+	local rows = {}
+	local function push(currentRow)
+		if currentRow ~= "" then
+			table.insert(rows, currentRow)
 		end
 	end
 
-	table.insert(descriptionRows, currentRow:Trim())
+	for line in string.gmatch(text or "", "[^\n]+") do
+		local currentRow = ""
+		local isEnglish = string.find(line, " ")
+		if isEnglish then
+			for _, word in ipairs(string.Split(line, " ")) do
+				if word == "" then continue end
 
-	return descriptionRows
+				local test = (currentRow == "" and word) or (currentRow .. " " .. word)
+
+				if surface.GetTextSize(test) > maxRowWidth then
+					push(currentRow)
+					currentRow = word
+				else
+					currentRow = test
+				end
+			end
+		else
+			for _, char in ipairs(utf8_chars(line)) do
+				local test = currentRow .. char
+
+				if surface.GetTextSize(test) > maxRowWidth then
+					push(currentRow)
+					currentRow = char
+				else
+					currentRow = test
+				end
+			end
+		end
+
+		push(currentRow)
+	end
+
+	return rows
 end
 
 local function GenerateDocuments()
@@ -511,19 +543,39 @@ local function GenerateDocuments()
 				textColor = perk.Price > GameData.LocalPlayer:GetPoints() and deniedColor or allowedColor
 			end
 
-			local text = buyText
-			if SlashCo.OwnsPerk(GameData.LocalPlayer, perk.ID) then
-				text = SlashCo.IsActivePerk(GameData.LocalPlayer, perk.ID) and disableText or enableText
+			local text
+			local conflictPerkTbl = nil
+			if SlashCo.IsActivePerk(GameData.LocalPlayer, perk.ID) then
+				text = disableText
+			else
+				local canEquip, lang, confPerkTbl = SlashCo.CanEquipPerk(GameData.LocalPlayer, perk.ID)
+				if canEquip then
+					text = enableText
+				else
+					if lang == "perk_not_owned" then
+						text = buyText
+					else
+						text = SlashCo.Language(lang)
+						conflictPerkTbl = confPerkTbl
+					end
+				end
 			end
 
 			surface.SetFont("TVCDMedium")
 			local width = surface.GetTextSize(text)
 
 			row = row + 2
-			wasHit = DrawTextWithHitbox("[" .. text .. "]", "TVCDMedium", (h / 30) + (width / 2), rowSize * row, textColor, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+			if not conflictPerkTbl then
+				text = "[" .. text .. "]"
+				wasHit = DrawTextWithHitbox(text, "TVCDMedium", (h / 75), rowSize * row, textColor, 0, TEXT_ALIGN_CENTER)
+			else
+				draw.SimpleText(text, "TVCD", h / 75, rowSize * row, textColor, 0, TEXT_ALIGN_CENTER)
+				row = row + 1
+				draw.SimpleText("-> \"" .. SlashCo.Language(conflictPerkTbl.Name) .. "\"", "TVCD", h / 75, rowSize * row, color_white, 0, TEXT_ALIGN_CENTER)
+			end
 
 			row = row + 5
-			draw.SimpleText(SlashCo.Language("perk_descui"), "TVCD", h / 100, rowSize * row, color_white, 0, TEXT_ALIGN_CENTER)
+			draw.SimpleText(SlashCo.Language("perk_descui"), "TVCD", h / 75, rowSize * row, color_white, 0, TEXT_ALIGN_CENTER)
 
 			row = row + 1
 			for _, rowText in ipairs(descriptionRows) do
@@ -539,7 +591,7 @@ local function GenerateDocuments()
 						SlashCo.BuyPerk(perk.ID)
 					elseif text == enableText then
 						SlashCo.EnablePerk(perk.ID)
-					else -- disable
+					else -- disable IMPORTANT! We have checks if we even own it inside DisablePerk which we silently depend on!
 						SlashCo.DisablePerk(perk.ID)
 					end
 				elseif not IsPressing(MOUSE_LEFT) and not unpressed then

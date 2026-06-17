@@ -19,6 +19,7 @@ local pingType = {
 		return "?", transp
 	end
 }
+local FadeTime = 15 -- After this many seconds the transparency will be reduced
 
 GameData.ActivePings = GameData.ActivePings or {}
 hook.Add("SlashCo:ServerEntityRemoved", "SlashCo:Pings", function(entIndex) -- Cleanup :3
@@ -104,6 +105,8 @@ net.Receive("SlashCo:SurvivorPings", function()
 				--GameData.LocalPlayer:EmitSound("slashco/ping_item.mp3")
 			end
 		end
+
+		pingInfo.FadeTime = CurTime() + FadeTime
 		if pingInfo.Type != "GHOST" then -- laxative was here
 			pingInfo.ExpiryTime = 0
 		else
@@ -118,8 +121,6 @@ end)
 -- RaphaelIT7: Why don't we remove pings? Because we can NEVER be certain here, an entity may be outside the PVS,may not have been networked yet and so on
 --             and since a round doesn't go that long, we can accept it filling up a bit.
 hook.Add("SlashCo:DrawHUD", "SlashCo:PingDisplay", function()
-	if not IsValid(GameData.LocalPlayer) then return end -- RaphaelIT7: iirc on 64x DrawHUD can be called BEFORE LocalPlayer is valid.
-
 	local curTime = CurTime()
 	local renderedEntities = {}
 	local plyTeam = GameData.LocalPlayer:Team()
@@ -179,6 +180,9 @@ hook.Add("SlashCo:DrawHUD", "SlashCo:PingDisplay", function()
 		end
 		
 		pos = pos or findPos(pingInfo):ToScreen()
+
+		surface.SetAlphaMultiplier(Lerp(1 - math.max((pingInfo.FadeTime - CurTime()) / FadeTime, 0), 1, 0.1))
+
 		--pingdist = findPos(pingInfo):Distance(plyr:GetPos()) --laxative was here
 		--print(pingdist)
 		
@@ -192,6 +196,8 @@ hook.Add("SlashCo:DrawHUD", "SlashCo:PingDisplay", function()
 		
 		draw.SimpleText("[" .. string.upper(SlashCo.Language(showText)) .. "]", "TVCD_small", pos.x, pos.y, textColor, TEXT_ALIGN_CENTER,
 				TEXT_ALIGN_CENTER)
+
+		surface.SetAlphaMultiplier(1)
 	end
 	--end
 	local plyr = LocalPlayer() --laxative was here
