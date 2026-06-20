@@ -586,6 +586,8 @@ end)
 hook.Add("SlashCo:OnBeerKegExplode", "SlashCo:RunSlasherFunction", function(beerkeg)
 	for _, slasher in ipairs(team.GetPlayers(TEAM_SLASHER)) do
 		slasher:SlasherFunction("OnBeerKegExplode", beerkeg)
+	end
+end)
 hook.Add("KeyPress", "SlashCo:SlasherFunctions", function(ply, button) -- laxative was here
 	local team = ply:Team()
 	if team ~= TEAM_SLASHER then
